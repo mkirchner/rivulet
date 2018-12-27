@@ -1,0 +1,18 @@
+language: python
+
+python:
+  - "3.6"
+  - "3.7-dev"
+
+install:
+  - pip install -r requirements.txt
+  - pip install .
+
+services:
+  - redis-server
+
+env:
+  - REDIS_URL=redis://localhost:6379/0
+
+script: 
+  - pytest
