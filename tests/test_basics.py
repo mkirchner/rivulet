@@ -4,6 +4,7 @@ import os
 import pytest
 import rivulet
 import time
+import uuid
 
 
 @pytest.fixture
@@ -19,19 +20,26 @@ def test_connect_happy_path(redis_url):
 
 
 def test_happy_path(redis_url):
+    n_channels = 3
+    n_messages = 10
     client = rivulet.connect(redis_url)
-    channels = ['test-channel', 'test-channel2']
+    channels = [uuid.uuid4().hex for _ in range(n_channels)]
     client.subscribe(channels)
+    assert len(client.subscriptions) == len(
+        channels), "Number of subscriptions should equal number of channels"
     _ = client.read()  # drop all pre-existing messages
-    for i in range(5):
-        client.write(channels[0], f'Hello World! {i}')
-        client.write(channels[1], f'Hello World! {i}')
-    time.sleep(0.1)
+    for i in range(n_messages):
+        for channel_no, channel in enumerate(channels):
+            client.write(channel, f'{channel_no}_{i}')
+    time.sleep(0.1)  # allow for a little latency
     msgs = client.read()
-    assert len(msgs) == 2, "Wrong number of channels"
+    assert len(msgs) == len(
+        channels
+    ), "Number of message keys should correspond to number of channels"
     assert all(
         channel in msgs.keys() for channel in channels), "Incorrect channels"
-    assert len(msgs[channels[0]]) == 5, "Wrong number of messages"
-    assert len(msgs[channels[1]]) == 5, "Wrong number of messages"
-
+    for channel in channels:
+        assert len(msgs[channel]) == n_messages, "Wrong number of messages"
     client.unsubscribe(channels)
+    assert len(
+        client.subscriptions) == 0, "Number of subscriptions should be zero"

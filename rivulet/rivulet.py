@@ -33,6 +33,11 @@ class Client:
         if channel_ids:
             self.subscribe(channel_ids)
 
+    @property
+    def subscriptions(self):
+        subs = self.redis.zrange(f'indexes:client#{self.client_id}', 0, -1)
+        return subs
+
     def ping(self) -> None:
         try:
             self.redis.ping()
