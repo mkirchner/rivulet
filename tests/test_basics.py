@@ -20,12 +20,18 @@ def test_connect_happy_path(redis_url):
 
 def test_happy_path(redis_url):
     client = rivulet.connect(redis_url)
-    client.subscribe(['test-channel', 'test-channel2'])
+    channels = ['test-channel', 'test-channel2']
+    client.subscribe(channels)
     _ = client.read()  # drop all pre-existing messages
     for i in range(5):
-        client.write('test-channel', f'Hello World! {i}')
-        client.write('test-channel2', f'Hello World! {i}')
+        client.write(channels[0], f'Hello World! {i}')
+        client.write(channels[1], f'Hello World! {i}')
     time.sleep(0.1)
     msgs = client.read()
-    print(msgs)
-    client.unsubscribe(['test-channel', 'test-channel2'])
+    assert len(msgs) == 2, "Wrong number of channels"
+    assert all(
+        channel in msgs.keys() for channel in channels), "Incorrect channels"
+    assert len(msgs[channels[0]]) == 5, "Wrong number of messages"
+    assert len(msgs[channels[1]]) == 5, "Wrong number of messages"
+
+    client.unsubscribe(channels)
