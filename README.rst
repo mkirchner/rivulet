@@ -55,6 +55,7 @@ Notes
 Todos
 ^^^^^
 
+* reconnect 
 * management functionality
 
   * list channels, delete channels
