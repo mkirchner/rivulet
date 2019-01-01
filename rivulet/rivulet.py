@@ -17,6 +17,7 @@ from rivulet.exceptions import ConnectionError, BackendError
 class IndexPolicy(enum.Enum):
     EARLIEST = 0
     CURRENT = 1
+    LATEST = 2
 
 
 class Client:
@@ -26,9 +27,11 @@ class Client:
                  redis_url: str,
                  client_id: str = None,
                  channel_ids: List[str] = None,
+                 bufsize: int = 4096,
                  **redis_args) -> None:
         self.redis = redis.from_url(
-            redis_url, encoding='utf-8', decode_responses=True)
+            redis_url, encoding='utf-8', decode_responses=True, **redis_args)
+        self.bufsize = bufsize
         self.client_id = client_id if client_id else uuid.uuid4().hex
         if channel_ids:
             self.subscribe(channel_ids)
@@ -49,31 +52,47 @@ class Client:
 
     def subscribe(self,
                   channel_ids: List[str],
-                  index_policy: IndexPolicy = IndexPolicy.CURRENT) -> None:
-        def _add_subscription(
-                pipeline: Pipeline,
-                client_id: str,
-                channel_id: str,
-                index_policy: IndexPolicy = IndexPolicy.CURRENT) -> Pipeline:
-            # keep pre-existing index if requested
-            nx = index_policy == IndexPolicy.CURRENT
-            pipeline.zadd(
-                f'clients:channel#{channel_id}', {self.client_id: 0}, nx=nx)
-            # update the channels & indexes list for the client
-            pipeline.zadd(
-                f'indexes:client#{self.client_id}', {channel_id: 0}, nx=nx)
-            return pipeline
+                  index_policy: IndexPolicy = IndexPolicy.CURRENT,
+                  timeout_ms: int = 1000) -> None:
 
-        # FIXME: pull index info from redis instead of relying on obscure
-        # FIXME: update semantics
-        try:
-            pipeline = self.redis.pipeline(transaction=True)
-            for channel_id in channel_ids:
-                pipeline = _add_subscription(pipeline, self.client_id,
-                                             channel_id, index_policy)
-            pipeline.execute()
-        except redis.exceptions.RedisError as e:
-            raise BackendError from e
+        pipeline = self.redis.pipeline(transaction=True)
+        for channel_id in channel_ids:
+            try:
+                with self.redis.lock(
+                        f'lock:ids:channel#{channel_id}',
+                        timeout=timeout_ms / 1000.0):
+
+                    # pull the current indexes for the channel
+                    zset = self.redis.zrange(
+                        f'clients:channel#{channel_id}',
+                        0,
+                        -1,
+                        withscores=True)
+                    if zset:
+                        client_ids, indexes = zip(*zset)
+                    else:
+                        client_ids, indexes = [], [0]
+
+                    if index_policy == IndexPolicy.EARLIEST:
+                        index = min(indexes)
+                    elif index_policy == IndexPolicy.CURRENT:
+                        if self.client_id in client_ids:
+                            continue
+                        else:
+                            # CURRENT fallback is LATEST
+                            index = max(indexes)
+                    elif index_policy == IndexPolicy.LATEST:
+                        index = max(indexes)
+
+                    pipeline.zadd(f'clients:channel#{channel_id}',
+                                  {self.client_id: index})
+                    pipeline.zadd(f'indexes:client#{self.client_id}',
+                                  {channel_id: index})
+                    pipeline.execute()
+            except redis.exceptions.LockError as e:
+                raise BackendError from e
+            except redis.exceptions.RedisError as e:
+                raise BackendError from e
 
     def unsubscribe(self, channel_ids: List[str]) -> None:
 
@@ -167,7 +186,7 @@ class Client:
             # check this
             channels, indexes = zip(*channel_indexes)
             min_index = min(indexes)
-            if min_index > current_index:
+            if min_index - self.bufsize > current_index:
                 pipeline.zremrangebyscore(f'messages:channel#{channel_id}', 0,
                                           min_index)
             message_lists.update({channel_id: messages})
