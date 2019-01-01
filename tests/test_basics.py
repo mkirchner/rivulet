@@ -43,3 +43,25 @@ def test_happy_path(redis_url):
     client.unsubscribe(channels)
     assert len(
         client.subscriptions) == 0, "Number of subscriptions should be zero"
+
+
+def test_message_limit(redis_url):
+    n_channels = 3
+    n_messages = 10
+    client = rivulet.connect(redis_url)
+    channels = [uuid.uuid4().hex for _ in range(n_channels)]
+    client.subscribe(channels)
+    _ = client.read()  # drop all pre-existing messages
+    for i in range(n_messages):
+        for channel_no, channel in enumerate(channels):
+            client.write(channel, f'{channel_no}_{i}')
+
+    time.sleep(0.1)  # allow for a little latency
+
+    message_limit = 5
+    for i in range(2):
+        msgs = client.read(message_limit=message_limit)
+        for channel in channels:
+            assert len(
+                msgs[channel]) == message_limit, "Wrong number of messages"
+    client.unsubscribe(channels)

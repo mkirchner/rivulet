@@ -116,7 +116,8 @@ class Client:
         except redis.exceptions.LockError as e:
             raise BackendError from e
 
-    def read(self, timeout_ms: int = 0) -> Dict[str, List[str]]:
+    def read(self, timeout_ms: int = 0,
+             message_limit: int = 512) -> Dict[str, List[str]]:
         current_indexes = self.redis.zrange(
             f'indexes:client#{self.client_id}', 0, -1, withscores=True)
         # the code below requires rework for balanced consumer locking
@@ -124,9 +125,9 @@ class Client:
         pipeline2 = self.redis.pipeline(transaction=True)
 
         for channel_id, current_index in current_indexes:
-            # FIXME, this may be too many messages
             pipeline.zrangebyscore(f'messages:channel#{channel_id}',
-                                   current_index + 1, 'inf')
+                                   current_index + 1,
+                                   current_index + message_limit)
             pipeline2.zrange(
                 f'clients:channel#{channel_id}', 0, -1, withscores=True)
 
