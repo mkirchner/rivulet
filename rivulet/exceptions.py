@@ -7,3 +7,7 @@ class RivuletError(Exception):
 
 class ConnectionError(RivuletError):
     pass
+
+
+class BackendError(RivuletError):
+    pass

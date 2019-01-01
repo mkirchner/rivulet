@@ -10,40 +10,54 @@ Redis-Based Message Streaming for Python
 .. contents::
    :local:
 
-Usage
------
-
-.. code-block:: python
-
-    # create a client (subscriptions are optional)
-    c = rivulet.connect(redis_url, client_id, channel_ids)
-
-    # subscribe using a policy ('earliest', 'current', or 'latest')
-    c.subscribe(channel_ids, index_policy='earliest')
-
-    # read from a channel, blocks if the timeout is negative
-    msgs = c.read(n_read_limit=512, timeout_ms=1000)
-    # this returns a map channel_id->[messages]
-
-    # write to a channel (requires a subscription to channel channel_id)
-    c.write(channel_id, messages)
-
-    # unsusbscribe
-    c.unsubscribe(channel_ids)
-
-    # disconnect
-    c.close()
-
+Quickstart
+----------
 
 Installation
-------------
+^^^^^^^^^^^^
 
 .. code-block:: bash
 
     $ pip install rivulet
 
 
-Licence
+Usage
+^^^^^
+
+.. code-block:: python
+
+    # create a client (subscriptions are optional)
+    c = rivulet.connect(redis_url)
+
+    channels = ['my-channel-0', 'my-channel-1']
+
+    # subscribe using a policy ('earliest', 'current', or 'latest')
+    c.subscribe(channels)
+
+    # read from a channel, blocks if the timeout is negative
+    inbox = c.read()
+    # this returns a map
+    #
+    # {
+    #     "my-channel-1": [
+    #         {"id": 123,
+    #          "ts": 123465623,  # timestamp, ms since epoch
+    #          "src": "some-client-id",
+    #          "data": "the message as a string"}, ...],
+    #     "my-channel-2": ...
+    # }
+    for channel, messages in inbox:
+        for message in messages:
+            do_something(message['data'])
+
+    # write to a channel (requires a subscription to channel channel_id)
+    c.write(channel_id, messages)
+
+    # unsusbscribe
+    c.unsubscribe(channels)
+
+
+License
 -------
 
 MIT
@@ -55,6 +69,7 @@ Notes
 Todos
 ^^^^^
 
+* reconnect 
 * management functionality
 
   * list channels, delete channels
