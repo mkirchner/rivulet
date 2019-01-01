@@ -35,8 +35,11 @@ class Client:
 
     @property
     def subscriptions(self):
-        subs = self.redis.zrange(f'indexes:client#{self.client_id}', 0, -1)
-        return subs
+        try:
+            subs = self.redis.zrange(f'indexes:client#{self.client_id}', 0, -1)
+            return subs
+        except redis.exceptions.RedisError as e:
+            raise BackendError from e
 
     def ping(self) -> None:
         try:
@@ -61,6 +64,8 @@ class Client:
                 f'indexes:client#{self.client_id}', {channel_id: 0}, nx=nx)
             return pipeline
 
+        # FIXME: pull index info from redis instead of relying on obscure
+        # FIXME: update semantics
         try:
             pipeline = self.redis.pipeline(transaction=True)
             for channel_id in channel_ids:
@@ -115,11 +120,17 @@ class Client:
                                 {message: message_id})
         except redis.exceptions.LockError as e:
             raise BackendError from e
+        except redis.exceptions.RedisError as e:
+            raise BackendError from e
 
     def read(self, timeout_ms: int = 0,
              message_limit: int = 512) -> Dict[str, List[str]]:
-        current_indexes = self.redis.zrange(
-            f'indexes:client#{self.client_id}', 0, -1, withscores=True)
+        try:
+            current_indexes = self.redis.zrange(
+                f'indexes:client#{self.client_id}', 0, -1, withscores=True)
+        except redis.exceptions.RedisError as e:
+            raise BackendError from e
+
         # the code below requires rework for balanced consumer locking
         pipeline = self.redis.pipeline(transaction=True)
         pipeline2 = self.redis.pipeline(transaction=True)
@@ -131,8 +142,12 @@ class Client:
             pipeline2.zrange(
                 f'clients:channel#{channel_id}', 0, -1, withscores=True)
 
-        raw_messages = pipeline.execute()
-        channel_indexes = pipeline2.execute()
+        try:
+            raw_messages = pipeline.execute()
+            channel_indexes = pipeline2.execute()
+        except redis.exceptions.RedisError as e:
+            raise BackendError from e
+
         inbox = zip(current_indexes, channel_indexes, raw_messages)
 
         message_lists = {}
@@ -157,7 +172,10 @@ class Client:
                                           min_index)
             message_lists.update({channel_id: messages})
 
-        pipeline.execute()
+        try:
+            pipeline.execute()
+        except redis.exceptions.RedisError as e:
+            raise BackendError from e
         return message_lists
 
 
