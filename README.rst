@@ -5,6 +5,10 @@ rivulet
    :target: https://travis-ci.org/mkirchner/rivulet
    :alt: Latest Travis CI build status
 
+.. image:: https://readthedocs.org/projects/rivulet/badge/?version=latest
+   :target: https://rivulet.readthedocs.io/en/latest/?badge=latest
+   :alt: Documentation Status
+
 Redis-Based Message Streaming for Python
 
 .. contents::
