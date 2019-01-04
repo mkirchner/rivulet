@@ -16,7 +16,7 @@ def redis_url():
 
 def test_connect_happy_path(redis_url):
     client = rivulet.connect(redis_url)
-    client.ping()
+    assert client.ping(), "Could not ping the redis server."
 
 
 def test_happy_path(redis_url):
@@ -87,6 +87,8 @@ def test_index_policy_earliest(redis_url):
     inbox_2 = client_2.read()
     assert len(
         inbox_2[channel]) == n_messages, "Wrong number of messages in inbox"
+    client_2.unsubscribe([channel])
+    client.unsubscribe([channel])
 
 
 def test_index_policy_latest_and_current_fallback_to_latest(redis_url):
@@ -122,3 +124,29 @@ def test_index_policy_latest_and_current_fallback_to_latest(redis_url):
     inbox_3 = client_3.read()
     assert len(
         inbox_3[channel]) == n_messages, "Wrong number of messages in inbox"
+
+    client_3.unsubscribe([channel])
+    client_2.unsubscribe([channel])
+    client.unsubscribe([channel])
+
+
+# def _write_n_messages(client, channel, n):
+#     for i in range(n):
+#         client.write(channel, f'msg_{i}')
+#
+#
+# def test_single_threaded_write_performance(benchmark, redis_url):
+#     # setup
+#     n_channels = 1
+#     n_messages = 1000
+#     client = rivulet.connect(redis_url)
+#     channels = [uuid.uuid4().hex for _ in range(n_channels)]
+#     client.subscribe(channels)
+#
+#     while client.read():  # drop all pre-existing messages
+#         pass
+#
+#     benchmark(
+#         _write_n_messages, client=client, channel=channels[0], n=n_messages)
+#
+#     client.unsubscribe(channels)
