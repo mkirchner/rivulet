@@ -1,6 +1,6 @@
-"""rivulet - Redis-Based Message Streaming for Python"""
+"""rivulet - Redis-Based Message Broker for Python"""
 
-__version__ = '0.0.1'
+__version__ = '0.1.0'
 __author__ = 'Marc Kirchner'
 __all__ = []
 
