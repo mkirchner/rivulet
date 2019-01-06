@@ -3,6 +3,7 @@ repos:
     rev: v2.1.0
     hooks:
       - id: trailing-whitespace
+        exclude: ./.bumpversion
   - repo: https://github.com/pre-commit/mirrors-yapf
     rev: v0.25.0
     exclude: ^docs/
