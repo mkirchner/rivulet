@@ -14,8 +14,9 @@ from typing import List, Dict
 
 import redis
 import redis.exceptions
+# pylint: disable=unused-import
 from redis.client import Pipeline
-
+# pylint: disable=redefined-builtin
 from rivulet.exceptions import ConnectionError, BackendError, TimeoutError
 
 
@@ -215,10 +216,10 @@ class Client:
                     f'lock:ids:channel#{channel_id}',
                     timeout=timeout_ms / 1000.0):
                 message_id = self.redis.incr(f'ids:channel#{channel_id}')
-                ts = int(time.time() * 10**6)  # microseconds since epoch
+                ts_ms = int(time.time() * 10**6)  # microseconds since epoch
                 message = json.dumps({
                     'id': message_id,
-                    'ts': ts,
+                    'ts': ts_ms,
                     'src': self.client_id,
                     'data': data
                 })
@@ -229,8 +230,10 @@ class Client:
         except redis.exceptions.RedisError as e:
             raise BackendError from e
 
-    def read(self, timeout_ms: int = 0,
-             message_limit: int = 512) -> Dict[str, List[str]]:
+    def read(
+            self,
+            timeout_ms: int = 0,  # pylint: disable=unused-argument
+            message_limit: int = 512) -> Dict[str, List[str]]:
         """
         Read available messages from all channel subscriptions.
 
@@ -263,8 +266,8 @@ class Client:
 
         message_lists = {}
 
-        for i, ((channel_id, current_index), channel_indexes,
-                raw_messages) in enumerate(inbox):
+        for ((channel_id, current_index), channel_indexes,
+             raw_messages) in inbox:
             if not raw_messages:
                 continue
             messages = [
@@ -276,7 +279,7 @@ class Client:
             pipeline.zadd(f'clients:channel#{channel_id}',
                           {self.client_id: newest_index})
             # check this
-            channels, indexes = zip(*channel_indexes)
+            _, indexes = zip(*channel_indexes)
             min_index = min(indexes)
             if min_index - self.bufsize > current_index:
                 pipeline.zremrangebyscore(f'messages:channel#{channel_id}', 0,

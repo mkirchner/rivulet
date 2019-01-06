@@ -73,7 +73,7 @@ Notes
 Todos
 ^^^^^
 
-* reconnect 
+* reconnect
 * management functionality
 
   * list channels, delete channels

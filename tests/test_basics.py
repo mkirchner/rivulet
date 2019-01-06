@@ -1,25 +1,32 @@
 """Test the basic client functionality."""
 
 import os
-import pytest
-import rivulet
 import time
 import uuid
+
+import pytest
+
+import rivulet
+
+# pylint: disable=redefined-outer-name
 
 
 @pytest.fixture
 def redis_url():
+    """Provides a redis URL as a fixture."""
     url = os.getenv("REDIS_URL")
     assert url, 'REDIS_URL environment variable not defined.'
     return url
 
 
 def test_connect_happy_path(redis_url):
+    """Check if we can connect to redis"""
     client = rivulet.connect(redis_url)
     assert client.ping(), "Could not ping the redis server."
 
 
 def test_happy_path(redis_url):
+    """Send 10 messages on 3 channels and check the results."""
     n_channels = 3
     n_messages = 10
     client = rivulet.connect(redis_url)
@@ -41,11 +48,11 @@ def test_happy_path(redis_url):
     for channel in channels:
         assert len(msgs[channel]) == n_messages, "Wrong number of messages"
     client.unsubscribe(channels)
-    assert len(
-        client.subscriptions) == 0, "Number of subscriptions should be zero"
+    assert not client.subscriptions, "Number of subscriptions should be zero"
 
 
 def test_message_limit(redis_url):
+    """Check if recv honors the message limit."""
     n_channels = 3
     n_messages = 10
     client = rivulet.connect(redis_url)
@@ -68,6 +75,7 @@ def test_message_limit(redis_url):
 
 
 def test_index_policy_earliest(redis_url):
+    """Test the EARLIEST index policy."""
     client = rivulet.connect(redis_url)
     channel = uuid.uuid4().hex
     client.subscribe([channel])
@@ -92,6 +100,7 @@ def test_index_policy_earliest(redis_url):
 
 
 def test_index_policy_latest_and_current_fallback_to_latest(redis_url):
+    """Test the LATEST and CURRENT fallback index policy."""
     client = rivulet.connect(redis_url)
     channel = uuid.uuid4().hex
     client.subscribe([channel])
