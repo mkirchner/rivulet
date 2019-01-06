@@ -1,18 +1,23 @@
 language: python
-
 python:
-  - "3.6"
-  - "3.7-dev"
-
+- '3.6'
+- 3.7-dev
 install:
-  - pip install -r requirements.txt
-  - pip install .
-
+- pip install -r requirements.txt
+- pip install .
 services:
-  - redis-server
-
+- redis-server
 env:
-  - REDIS_URL=redis://localhost:6379/0
-
+- REDIS_URL=redis://localhost:6379/0
 script:
-  - pytest
+- pytest
+deploy:
+  provider: pypi
+  user: mkirchner
+  password:
+    secure: RvafLC+cv0fjwXzjkWqEfuBciGvORIjDFKbYChRr5Iv08VHSaohjCNDJ/ugV5AL2mocmbj40++Afh8XHtJJHM45xvfjXdeN4c+erhrEbB2/CayAuhQ/Xjv2uwyno8P1/KPCnaf/BcGdjbb8KJSQsnPmzXeTrRi9b0W0V/lZFQbbzKltaqBLz28YGhIoecOgPxBRtF86KOnOLqSfwoj141oq24+LvGrCgvIJ70+yIdGxny6nZGB7xMbB9UJywiKZD5Fod9CK5jcECxPyb6p/vM4lCMxEJpf533+3sH3KC+997KqJSYoH75JeEro3Y56jnsSTh+sQY8SPC8krAloXuRIGSESOFUFXi/0kH/DlAbzodZfiEtPGnsLfQXQCFzXipx+oASSxvzilfyp3ovKY5GMe6H/gAvTCDeCGtvfW8kU/nGDXuupIwmbitNzuAjee5pu8udSaW6ndh9bstlzTAeLp/3LbdIFgJqTdQjBk3QMXHvKIWPikH3X6UglPWh/f1PDGb/sFbCnnq7x9JTqCjLYi0q4ypkr6GipVaWa+IJOh6gpEGO+nGoqm+0oRxU30t9GEO/w6ZSKdIImJ2A9aFRmbypEhSIjcMUR8lw87eWoPP1vXgX2KPlTE8lnbqoWxJ80WinMQTX6qWOAGx15JrFjGI5vS9riJLsaIVsj340Gs=
+  distributions: "sdist"
+  skip_existing: true
+  on:
+    tags: true
+    branch: master
