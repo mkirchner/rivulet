@@ -18,7 +18,7 @@ A simple example
     # create a client
     c = rivulet.connect(redis_url)
 
-    # subscribe 
+    # subscribe
     channels = ['my-channel-0', 'my-channel-1']
     c.subscribe(channels)
 
