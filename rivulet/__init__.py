@@ -2,7 +2,7 @@
 
 from typing import List
 
-__version__ = '0.1.1-dev0'
+__version__ = '0.1.1-dev1'
 __author__ = 'Marc Kirchner'
 __all__ = ['connect', 'Client', 'IndexPolicy']
 
