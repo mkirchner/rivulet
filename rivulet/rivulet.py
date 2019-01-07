@@ -10,7 +10,7 @@ import json
 import time
 import uuid
 
-from typing import List, Dict
+from typing import List, Dict, Union
 
 import redis
 import redis.exceptions
@@ -176,7 +176,6 @@ class Client:
         :param channel_ids: A list of channels the unsubscribe from.
                             Invalid or non-existent channels will *not* raise
                             an error.
-        :raises: BackendError, if any redis command fails.
 
         """
         try:
@@ -207,9 +206,30 @@ class Client:
     def write(self, channel_id: str, data: str,
               timeout_ms: int = 10000) -> None:
         """
-        Send a message to a channel/topic.
+        Write a message to a topic.
 
-        TBD
+        :param channel_id: The name of the channel to write to.
+        :param data: The message data.
+        :param timeout_ms: (optional) User-specified write timeout
+                           (default=10s)
+        :raises: :code:`TimeoutError` if the message cannot be send within the
+                 specified :code:`timeout_ms` interval. :code:`BackendError`
+                 for any other redis failures.
+
+        The function obtains a unique (within the topic) message id from the
+        redis server wraps the data into a message envelope and adds the
+        message to the topic.
+
+        A message is a simple python dictionary:
+
+        .. code-block:: python
+
+                message = {
+                    'id': message_id,
+                    'ts': timestamp_in_ms_since_epoch,
+                    'src': client_id,
+                    'data': data
+                }
         """
         try:
             with self.redis.lock(
@@ -226,18 +246,37 @@ class Client:
                 self.redis.zadd(f'messages:channel#{channel_id}',
                                 {message: message_id})
         except redis.exceptions.LockError as e:
-            raise BackendError from e
+            raise TimeoutError from e
         except redis.exceptions.RedisError as e:
             raise BackendError from e
 
-    def read(
-            self,
-            timeout_ms: int = 0,  # pylint: disable=unused-argument
-            message_limit: int = 512) -> Dict[str, List[str]]:
+    def read(self, message_limit: int = 512
+             ) -> Dict[str, List[Dict[str, Union[int, str]]]]:
         """
         Read available messages from all channel subscriptions.
 
-        TBD
+        :param message_limit: Maximum number of messages to read from a
+                              topic in a single call. The maximum overall
+                              number of retrieved messages is
+                              (:code:`message_limit` x number of subscribed
+                              topics)
+        :return: A dictionary with subscribed topics as keys and a list of
+                 messages for every topic as values.
+        :raises: :code:`BackendError` if there are any redis backend
+                 errors.
+
+        The messages returned for every topic are simple python dictionaries.
+        The data sent with :code:`write()` is available in the :code:`data`
+        field.
+
+        .. code-block:: python
+
+                message = {
+                    'id': message_id,
+                    'ts': timestamp_in_ms_since_epoch,
+                    'src': client_id,
+                    'data': data
+                }
         """
         try:
             current_indexes = self.redis.zrange(
