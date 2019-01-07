@@ -1,6 +1,10 @@
 rivulet: A Redis-Based Message Broker for Python
 ================================================
 
+.. image:: https://badge.fury.io/py/rivulet.svg
+   :target: https://badge.fury.io/py/rivulet
+   :alt: Latest PyPi version
+
 .. image:: https://travis-ci.org/mkirchner/rivulet.png
    :target: https://travis-ci.org/mkirchner/rivulet
    :alt: Latest Travis CI build status
