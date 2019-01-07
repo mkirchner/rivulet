@@ -16,7 +16,7 @@ def read(filename):
 
 setup(
     name="rivulet",
-    version="0.1.1-dev2",
+    version="0.1.1",
     url="https://github.com/mkirchner/rivulet",
     license='MIT',
     author="Marc Kirchner",
